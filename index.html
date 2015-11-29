@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+
+        <!-- navbar -->
+        <!-- nav class="navbar navbar-default">
+          <div class="container-fluid">
+          <div class="navbar-fluid">
+             <div class="navbar-header">
+              <ul class="nav navbar-nav">
+               <li class="dropdown">
+                   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true">
+                   </span></a>
+                   <ul class="dropdown-menu">
+                        <li><a href="#">Interval</a></li>
+                        <li><a href="#">Timer</a></li>
+                        <li><a href="#">Stop Watch</a></li>
+                   </ul>
+               </li>
+             </div>
+          </div>
+        </nav-->
+
+        <!-- interval timer -->
+        <div id="interval_panel" class="container center-block;" style="margin-top: 0.4em;">
+            <div class="panel panel-primary">
+                <div class="panel-heading"><h3>Interval Timer</h3></div>
+                    
+                    <div style="margin-left: 0.4em;">
+                        <span style="font-size: 3em; font-family Helvetica;" id="mode_display"/>
+                    </div>
+
+                    <div align="center" style="margin-left: 0.4em;">
+                        <span style="font-size:9em; font-family: Helvetica;" id="time_display"></span>
+                    </div>
+
+                    <div style="margin-bottom: 0.4em; margin-left: 0.4em;">
+                        <!-- play button -->
+                        <button type="button" id="play_button" class="btn btn-default btn-lg" aria-label="Left Align">
+                            <span id="play_button_image" class="glyphicon glyphicon-play" aria-hidden="true"></span>
+                        </input>
+
+                         <!-- stop button -->
+                        <button type="button" id="stop_button" disabled="true" class="btn btn-default btn-lg" aria-label="Left Align">
+                            <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
+                        </button>
+
+                         <!-- new interval button -->
+                        <button type="button" id="new_interval_button" class="btn btn-default btn-lg" aria-label="Left Align">
+                            <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+                        </button>
+                    </div>
+            </div>
+        </div>
+
+
+        <div id="settings_panel" class="container center-block;" style="display: none; margin-top: 0.4em;">
+            <div class="panel panel-primary">
+                <div class="panel-heading"><h4>Interval Timer Settings<h4></div>
+                  <h4>All Times In Seconds</h4>
+                    <form id="interval_settings">
+                      <div class="form-group form-group-lg" style="margin-left: 0.4em;">
+                            <label for="delay">Workout Delay:</label>
+                            <input type="number" class="form-control input-lg" id="delay" required="true" min="0" max="100" value="10" onkeyup="validateInput()"/>
+                            <span id="delayHelp" class="help-block">Enter a value between 0 and 100.</span>
+                      </div>
+                      <div class="form-group form-group-lg" style="margin-left: 0.4em;">
+                            <label for="round_count">Rounds:</label>
+                            <input type="number" class="form-control input-lg" id="round_count" required="true" min="1" max="100" value="5" onkeyup="validateInput()"/>
+                            <span id="roundHelp" class="help-block">Enter a value between 1 and 100.</span>
+                      </div>
+
+                      <div class="form-group form-group-lg" style="margin-left: 0.4em;">
+                            <label for="round_time">Round Time:</label>
+                            <input type="number" class="form-control input-lg" id="round_time" min="1" required="true" max="3600" value="300" onkeyup="validateInput()"/>
+                            <span id="roundTimeHelp" class="help-block">Enter a value between 1 and 3600.</span>
+                      </div>
+
+                      <div class="form-group form-group-lg" style="margin-left: 0.4em;">
+                            <label for="rest_time">Rest Time:</label>
+                            <input type="number" class="form-control input-lg" id="rest_time" required="true" min="0" max="3600" value="30" onkeyup="validateInput()"/>
+                            <span id="restHelp" class="help-block">Enter a value between 0 and 3600.</span>
+                      </div>
+                    </form>
+
+                    <button type="button" id="apply_settings_button" class="btn btn-default btn-lg" aria-label="Left Align" style="margin-left: 0.4em; margin-bottom: 0.4em;">
+                        <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            "use strict";
+            var smallBeep = null;
+            var bigBeep = null; 
+            var play_button = document.getElementById("play_button");
+            var play_button_image = document.getElementById("play_button_image");
+            var stop_button = document.getElementById("stop_button");
+            var new_interval_button = document.getElementById("new_interval_button");
+            var apply_settings_button = document.getElementById("apply_settings_button");
+            var interval_form = document.getElementById("interval_settings");
+            var settings_panel = document.getElementById("settings_panel");
+            var interval_panel = document.getElementById("interval_panel");
+            var inputs = [interval_form.delay, interval_form.round_count, 
+                          interval_form.round_time, interval_form.rest_time];
+
+            window.onload = initSound;
+            var context;
+            function audioError(e) { console.log("Error with decoding audio data" + e.err); }
+
+            function loadSounds()
+            {
+                var prefix = window.location.href + "media/";
+                var url = prefix + "Bleep3.mp3"
+                var request = new XMLHttpRequest();
+                request.open('GET', url , true);
+                request.responseType = 'arraybuffer';
+
+                request.onerror = audioError;
+                request.onload = function() // Decode asynchronously
+                    {
+                        context.decodeAudioData(request.response, function(buffer) { smallBeep = buffer; }, audioError);
+                    }
+                request.send();
+
+                var request2 = new XMLHttpRequest();
+                url = prefix+"Bleep6.mp3";
+                request2.open('GET', url , true);
+                request2.responseType = 'arraybuffer';
+
+                request2.onload = function() // Decode asynchronously
+                    {
+                        context.decodeAudioData(request2.response, function(buffer) { bigBeep = buffer; }, audioError);
+                    }
+                request2.send();
+            }
+
+            function initSound() 
+            {
+                try {
+                    // Fix up for prefixing
+                    window.AudioContext = window.AudioContext||window.webkitAudioContext;
+                    context = new AudioContext();
+                }
+                catch(e) {
+                    alert('Web Audio API is not supported in this browser');
+                    return;
+                }
+
+                loadSounds();
+            }
+
+            function validateInput()
+            {
+                var classVal = "form-group form-group-lg";
+                var ok = true;
+                for (var i = 0; i != inputs.length; i++)
+                {
+                    var obj = inputs[i];
+                    var val = parseInt(obj.value);
+                    if (isNaN(val) || (val < obj.min) || (val > obj.max))
+                    {
+                        obj.parentElement.className = classVal + " has-error";
+                        ok = false;
+                    }
+                    else
+                    {
+                       obj.parentElement.className = classVal +  " has-success";
+                    }
+                }
+
+                if (ok)
+                {
+                    apply_settings_button.disabled = false;
+                }
+                else
+                {
+                    apply_settings_button.disabled = true;
+                }
+                return ok;
+            }
+
+            function playSmallBeep()
+            {
+                
+                var buffer = context.createBufferSource();
+                buffer.buffer = smallBeep;
+                buffer.connect(context.destination);
+                setTimeout(function(){ buffer.start(0)}, 0);
+            }
+
+            function playBigBeep()
+            {
+                var buffer = context.createBufferSource();
+                buffer.buffer = bigBeep;
+                buffer.connect(context.destination);
+                setTimeout(function(){ buffer.start(0)}, 0);
+            }
+
+
+        function IntervalTimer(delay, rounds, round_secs, rest) 
+        {
+            this.delay_secs = delay;
+            this.delay = delay; 
+
+            this.round_count = 1;
+            this.rounds = rounds; 
+
+            this.round_secs = round_secs;
+            this.round = round_secs;
+
+            this.rest_secs = rest; 
+            this.rest = rest; 
+
+            var t = this;
+            this.state = undefined;
+
+
+         this.updateTimer = function(raw_secs)
+            {
+                var minutes = Math.floor( raw_secs / 60); 
+                var seconds = raw_secs  % 60;
+
+                var fmtTime = "";
+                if (minutes < 10)
+                    fmtTime = "0";
+                fmtTime += minutes + ":";
+                if(seconds < 10)
+                    fmtTime += "0";
+                fmtTime += seconds;
+
+                document.getElementById("time_display").style.color = "black";
+                document.getElementById("time_display").innerHTML = fmtTime;
+            }
+
+        this.updateDelay = function()
+            {
+                t.currentFunc = t.updateDelay; 
+                t.updateTimer(t.delay_secs);
+                if (t.delay_secs === 0)
+                {
+                    playBigBeep();
+                    clearInterval(t.state);
+                    t.state = setInterval(t.updateRound, 1000);
+                    return;
+                }
+                else if (t.delay > 3 && t.delay_secs <= 3)
+                {
+                    playSmallBeep();
+                }
+                document.getElementById("mode_display").style.color= "#f0ad4e";
+                document.getElementById("mode_display").innerHTML = "Get Ready!"
+                t.delay_secs--;
+            }
+
+
+        this.updateRound = function()
+            {
+                t.currentFunc = t.updateRound; 
+                t.updateTimer(t.round_secs);
+                if (t.round_secs === t.round)
+                {
+                } 
+                else if(t.round > 3 && t.round_secs != 0 && t.round_secs <= 3) // 3 is the number of seconds left
+                {
+                    playSmallBeep();
+                }
+
+                document.getElementById("mode_display").style.color = "black";
+                document.getElementById("mode_display").innerHTML = "Round " + t.round_count + "/" + t.rounds;
+
+                if (t.round_secs === 0 )
+                {
+                    if (t.round_count == t.rounds) // we're done with everything
+                    {
+                        clearInterval(t.state);
+                        t.state = undefined;
+                        playBigBeep();
+                        t.updateFinished();
+                        return;
+                    } 
+                    else 
+                    { 
+                       t.round_secs = t.round;
+                       t.round_count++;
+                       if (t.rest > 0)
+                       {
+                           clearInterval(t.state);
+                           t.state = setInterval(t.updateRest, 1000);
+                       }
+                       playBigBeep();
+                       return;
+                    }
+                }
+                t.round_secs--;
+            }
+
+
+        this.updateFinished = function()
+            {
+                document.getElementById("time_display").style.color = "#5cb85c";
+                document.getElementById("time_display").innerHTML = "Finished";
+                setTimeout(beginRoundBeep, 0);
+
+                new_interval_button.disabled = false; 
+                play_button_image.className="glyphicon glyphicon-play";
+                stop_button.disabled = true;
+                t.setInitialCurrentFunc();
+
+                t.delay_secs = t.delay; 
+                t.round_count = 1;
+                t.round_secs = t.round;
+                t.rest_secs = t.rest; 
+            }
+
+        this.updateRest = function()
+            {
+                t.currentFunc = t.updateRest;
+                t.updateTimer(t.rest_secs);
+                if ( t.rest_secs === 0)
+                {
+                    playBigBeep();
+                    t.rest_secs = t.rest;
+                    clearInterval(t.state);
+                    t.state = setInterval(t.updateRound, 1000);
+                    return;
+                } 
+                else if (t.rest > 3 && t.rest_secs <= 3)
+                {
+                    playSmallBeep();
+                }
+
+                document.getElementById("mode_display").style.color = "#5cb85c";
+                document.getElementById("mode_display").innerHTML = "Rest";
+                t.rest_secs--;
+            }
+
+        this.setInitialCurrentFunc = function()
+            {
+                if (t.delay > 0)
+                {
+                    t.currentFunc = t.updateDelay;
+                }
+                else
+                {
+                    t.currentFunc = t.updateRound;
+                }
+            }
+        this.setInitialCurrentFunc();
+    } // mercifully end the constructor
+
+
+        IntervalTimer.prototype.initDisplay = function()
+        {
+            document.getElementById("time_display").innerHTML = "";
+            document.getElementById("mode_display").style.color= "black";
+            document.getElementById("mode_display").innerHTML = this.rounds + " rounds<br>" + this.round + " seconds/round<br>" + this.rest  + " seconds rest";
+        }
+
+        var intervalTimer = new IntervalTimer(interval_form.delay.value, interval_form.round_count.value,
+                                              interval_form.round_time.value, interval_form.rest_time.value);
+        intervalTimer.initDisplay();
+
+        apply_settings_button.onclick =  function() 
+        { 
+            var f = interval_form;
+            intervalTimer = new IntervalTimer(f.delay.value, f.round_count.value,
+                                              f.round_time.value, f.rest_time.value);
+            intervalTimer.initDisplay();
+            settings_panel.style.display = "none";
+            interval_panel.style.display = "block";
+        }
+
+        stop_button.onclick =  function() 
+        {
+            var f = interval_form;
+            clearInterval(intervalTimer.state); 
+            intervalTimer = new IntervalTimer(f.delay.value, f.round_count.value,
+                                              f.round_time.value, f.rest_time.value);
+            intervalTimer.initDisplay();
+            play_button_image.className="glyphicon glyphicon-play";
+            stop_button.disabled = true;
+            new_interval_button.disabled = false; 
+            
+        }
+
+        play_button.onclick = function() 
+        { 
+            stop_button.disabled = false;
+            new_interval_button.disabled = true; 
+            if(intervalTimer.state === undefined)
+            {
+                play_button_image.className="glyphicon glyphicon-pause";
+                intervalTimer.state = setInterval(intervalTimer.currentFunc, 1000);
+            } 
+            else 
+            { 
+                play_button_image.className="glyphicon glyphicon-play";
+                clearInterval(intervalTimer.state); 
+                intervalTimer.state = undefined;
+            }
+        }
+
+        new_interval_button.onclick = function()
+        {
+            interval_panel.style.display = "none";
+            settings_panel.style.display = "block";
+        }
+
+        </script>
+    </body>
+</html>
